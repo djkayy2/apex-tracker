@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Apex Track | David's Daily Health Journal</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              900: '#0c4a6e',
+            },
+            accent: '#10b981',
+            darkbg: '#0f172a',
+            darkcard: '#1e293b',
+            darkborder: '#334155'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0b1120;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tap-card {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .tap-card:active {
+      transform: scale(0.98);
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24">
+
+  <!-- Top App Bar -->
+  <header class="sticky top-0 z-30 bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-sky-500/20">
+          <i data-lucide="flame" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-tight text-white flex items-center gap-2">
+            Apex Health <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Day 28 Streak</span>
+          </h1>
+          <p class="text-xs text-slate-400">David Kay • Canberra, ACT</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="exportToExcel()" class="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-md transition-all active:scale-95">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Export to</span> Excel
+        </button>
+        <button onclick="openModal()" class="flex items-center space-x-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-md transition-all active:scale-95">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Log Day</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 space-y-6">
+
+    <!-- KPI Metric Quick Grid (Tappable Quick Look) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+      <!-- Streak -->
+      <div class="tap-card bg-[#1e293b] p-4 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-medium text-slate-400">Active Streak</span>
+          <div class="p-1.5 rounded-lg bg-orange-500/10 text-orange-400">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl font-black text-white" id="kpi-streak">28</span>
+          <span class="text-xs font-bold text-orange-400">Days</span>
+        </div>
+        <div class="mt-1 text-[11px] text-slate-400">100% adherence since start</div>
+        <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-orange-500/5 rounded-full blur-xl pointer-events-none"></div>
+      </div>
+
+      <!-- Current Weight -->
+      <div class="tap-card bg-[#1e293b] p-4 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-medium text-slate-400">Current Weight</span>
+          <div class="p-1.5 rounded-lg bg-sky-500/10 text-sky-400">
+            <i data-lucide="scale" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl font-black text-white" id="kpi-weight">111.2</span>
+          <span class="text-xs font-bold text-sky-400">kg</span>
+        </div>
+        <div class="mt-1 text-[11px] text-slate-400">Fasted true est: ~110.0 kg</div>
+        <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-sky-500/5 rounded-full blur-xl pointer-events-none"></div>
+      </div>
+
+      <!-- 7-Day Avg Steps -->
+      <div class="tap-card bg-[#1e293b] p-4 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-medium text-slate-400">7-Day Avg Steps</span>
+          <div class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <i data-lucide="footprints" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl font-black text-white" id="kpi-steps">15,042</span>
+          <span class="text-xs font-bold text-emerald-400">/day</span>
+        </div>
+        <div class="mt-1 text-[11px] text-emerald-400/90 font-medium">Over 10k target!</div>
+        <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl pointer-events-none"></div>
+      </div>
+
+      <!-- 7-Day Avg Protein -->
+      <div class="tap-card bg-[#1e293b] p-4 rounded-2xl border border-slate-800 shadow-sm relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <span class="text-xs font-medium text-slate-400">7-Day Avg Protein</span>
+          <div class="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl font-black text-white" id="kpi-protein">173.8</span>
+          <span class="text-xs font-bold text-purple-400">g</span>
+        </div>
+        <div class="mt-1 text-[11px] text-purple-300/90 font-medium">+33.8g above 140g floor</div>
+        <div class="absolute -right-2 -bottom-2 w-16 h-16 bg-purple-500/5 rounded-full blur-xl pointer-events-none"></div>
+      </div>
+    </div>
+
+    <!-- Interactive Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <!-- Steps & Distance Trend Chart -->
+      <div class="bg-[#1e293b] p-5 rounded-2xl border border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+              Daily Authentic Steps Trend
+            </h2>
+            <p class="text-xs text-slate-400">Deduplicated authentic step volume vs 10,000 floor</p>
+          </div>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">Live</span>
+        </div>
+        <div class="h-64">
+          <canvas id="stepsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Calories & Protein Chart -->
+      <div class="bg-[#1e293b] p-5 rounded-2xl border border-slate-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="utensils" class="w-4 h-4 text-sky-400"></i>
+              Energy (kcal) & Protein (g)
+            </h2>
+            <p class="text-xs text-slate-400">Target Deficit: 1,800–2,100 kcal | Protein floor: 140g</p>
+          </div>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">Live</span>
+        </div>
+        <div class="h-64">
+          <canvas id="nutritionChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's Quick Tap Input Card -->
+    <div class="bg-gradient-to-r from-slate-900 via-[#1e293b] to-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-amber-400"></i>
+            Quick Tap Entry Card
+          </h2>
+          <p class="text-xs text-slate-400">Tap any metric box below to edit values on the fly!</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="loadDayForEditing(currentActiveEntryId)" class="text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit Complete Day
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid of Tappable Value Blocks -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        <!-- Date Selector -->
+        <div onclick="openQuickPrompt('date')" class="tap-card bg-[#0f172a] p-3 rounded-xl border border-slate-800 hover:border-sky-500/50 cursor-pointer">
+          <span class="text-[11px] font-medium text-slate-400 block">Logged Date</span>
+          <span class="text-sm font-bold text-sky-400 mt-1 block truncate" id="quick-date">Tue (20/10)</span>
+          <span class="text-[10px] text-slate-500">Tap to select</span>
+        </div>
+
+        <!-- Authentic Steps -->
+        <div onclick="openQuickPrompt('steps')" class="tap-card bg-[#0f172a] p-3 rounded-xl border border-slate-800 hover:border-emerald-500/50 cursor-pointer">
+          <span class="text-[11px] font-medium text-slate-400 block">Steps (Authentic)</span>
+          <span class="text-sm font-bold text-emerald-400 mt-1 block" id="quick-steps">14,100</span>
+          <span class="text-[10px] text-slate-500">Tap to update</span>
+        </div>
+
+        <!-- Calories -->
+        <div onclick="openQuickPrompt('calories')" class="tap-card bg-[#0f172a] p-3 rounded-xl border border-slate-800 hover:border-amber-500/50 cursor-pointer">
+          <span class="text-[11px] font-medium text-slate-400 block">Calories (kcal)</span>
+          <span class="text-sm font-bold text-amber-400 mt-1 block" id="quick-calories">2,469</span>
+          <span class="text-[10px] text-slate-500">Tap to update</span>
+        </div>
+
+        <!-- Protein -->
+        <div onclick="openQuickPrompt('protein')" class="tap-card bg-[#0f172a] p-3 rounded-xl border border-slate-800 hover:border-purple-500/50 cursor-pointer">
+          <span class="text-[11px] font-medium text-slate-400 block">Protein (g)</span>
+          <span class="text-sm font-bold text-purple-400 mt-1 block" id="quick-protein">174.9g</span>
+          <span class="text-[10px] text-slate-500">Floor: 140g</span>
+        </div>
+
+        <!-- Morning Shake / Breakfast -->
+        <div onclick="openQuickPrompt('breakfast')" class="tap-card bg-[#0f172a] p-3 rounded-xl border border-slate-800 hover:border-sky-500/50 cursor-pointer">
+          <span class="text-[11px] font-medium text-slate-400 block">Breakfast Shake</span>
+          <span class="text-sm font-bold text-slate-200 mt-1 block truncate" id="quick-breakfast">ManShake+Chia</span>
+          <span class="text-[10px] text-slate-500">Tap to view/edit</span>
+        </div>
+
+        <!-- Dinner / Dindins -->
+        <div onclick="openQuickPrompt('dinner')" class="tap-card bg-[#0f172a] p-3 rounded-xl border border-slate-800 hover:border-rose-500/50 cursor-pointer">
+          <span class="text-[11px] font-medium text-slate-400 block">Dinner / Dindins</span>
+          <span class="text-sm font-bold text-rose-400 mt-1 block truncate" id="quick-dinner">Scotch Fillet</span>
+          <span class="text-[10px] text-slate-500">Tap to view/edit</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table Section -->
+    <div class="bg-[#1e293b] rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
+      <div class="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="calendar" class="w-5 h-5 text-sky-400"></i>
+            Daily Journal & Nutrition Log
+          </h2>
+          <p class="text-xs text-slate-400">All recent entries synchronized with Excel workbook specs</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="resetDefaults()" class="text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/60 transition">
+            Restore Defaults
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="bg-slate-900/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+              <th class="py-3.5 px-4 text-center">Day</th>
+              <th class="py-3.5 px-4 text-right">Calories</th>
+              <th class="py-3.5 px-4 text-right">Protein</th>
+              <th class="py-3.5 px-4 text-right">Steps</th>
+              <th class="py-3.5 px-5">Breakdown & Activity Highlights</th>
+              <th class="py-3.5 px-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody" class="divide-y divide-slate-800/60 font-normal">
+            <!-- Injected by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Comprehensive Entry Modal / Drawer -->
+  <div id="entryModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#1e293b] border border-slate-700 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <div class="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+            <i data-lucide="edit-3" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white" id="modalTitle">Log Health & Nutrition</h3>
+            <p class="text-xs text-slate-400">Fill in details or tap quick fields to update</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-6 overflow-y-auto space-y-5">
+        <!-- Date & Day -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Date / Label</label>
+            <input type="text" id="inputDay" placeholder="e.g. Wednesday (21/10)" class="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Sunday Weigh-In (kg) (Optional)</label>
+            <input type="text" id="inputWeight" placeholder="e.g. 111.2 kg" class="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <!-- Activity & Steps Section -->
+        <div class="p-4 bg-slate-900/60 rounded-xl border border-slate-800/80 space-y-3">
+          <h4 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
+            <i data-lucide="activity" class="w-4 h-4"></i> Activity & Steps
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Authentic Steps</label>
+              <input type="number" id="inputSteps" placeholder="14100" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Watch Displayed</label>
+              <input type="number" id="inputRawSteps" placeholder="e.g. 22603" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-slate-500">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Workout Distance (km)</label>
+              <input type="text" id="inputDistance" placeholder="e.g. 3.88 km" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-slate-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Nutrition & Macros Section -->
+        <div class="p-4 bg-slate-900/60 rounded-xl border border-slate-800/80 space-y-3">
+          <h4 class="text-xs font-bold text-sky-400 flex items-center gap-1.5 uppercase tracking-wider">
+            <i data-lucide="pie-chart" class="w-4 h-4"></i> Macros & Fuel
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Calories (kcal)</label>
+              <input type="number" id="inputCalories" placeholder="2380" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Protein (g)</label>
+              <input type="number" step="0.1" id="inputProtein" placeholder="174.5" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Breakdown -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nutrition & Activity Breakdown (Full Notes)</label>
+          <textarea id="inputBreakdown" rows="4" placeholder="Breakfast: The Man Shake + creatine... Morning tea: coffee & apple... Lunch: ... Dinner: ... Steps & workouts breakdown." class="w-full bg-[#0f172a] border border-slate-700 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-sky-500 leading-relaxed"></textarea>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3.5 bg-slate-900 border-t border-slate-800 flex items-center justify-end space-x-2.5">
+        <button onclick="closeModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition">Cancel</button>
+        <button onclick="saveModalEntry()" class="px-5 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/30 transition active:scale-95">Save & Update Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single-Field Quick Tap Prompt Modal -->
+  <div id="quickPromptModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#1e293b] border border-slate-700 w-full max-w-sm rounded-2xl shadow-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2" id="promptTitle">Update Field</h3>
+        <button onclick="closeQuickPrompt()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1" id="promptLabel">Value</label>
+        <div id="promptInputContainer">
+          <!-- Dynamic Input (Text or Number) -->
+        </div>
+      </div>
+      <div class="flex justify-end space-x-2">
+        <button onclick="closeQuickPrompt()" class="px-3.5 py-1.5 rounded-lg text-xs text-slate-400 hover:bg-slate-800">Cancel</button>
+        <button onclick="saveQuickPrompt()" class="px-4 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white shadow">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core JavaScript Logic -->
+  <script>
+    // Initial Seed Data aligned with David Kay Health Journal v77
+    const defaultData = [
+      {
+        id: 1,
+        day: 'Sunday (11/10)',
+        calories: 2313,
+        protein: 217.8,
+        steps: 14305,
+        breakdown: 'Official Sunday weigh-in: 111.6 kg (+0.7 kg GI/water retention post-travel). Passed waste Sunday morning. Breakfast: Man Shake + chia + coffee. Lunch: loaded chicken wrap. Afternoon walk: 4.40 km (5,446 steps). Dinner: 4x baked chicken breast enchiladas + 80g Greek yoghurt (~132g protein!). 14,305 steps.'
+      },
+      {
+        id: 2,
+        day: 'Monday (12/10)',
+        calories: 2333,
+        protein: 203.2,
+        steps: 10067,
+        breakdown: 'Passed waste Monday morning. Breakfast: Man Shake + chia + 3 coffees. Lunch: Man Shake + ham & cheese toastie. Midday walk: 3.48 km (4,051 steps). Afternoon: popcorn + apple. Dinner: 2x loaded chicken wraps + yoghurt berry bowl + Kinder chocolate. 10,067 steps.'
+      },
+      {
+        id: 3,
+        day: 'Tuesday (13/10)',
+        calories: 2047,
+        protein: 202.5,
+        steps: 16315,
+        breakdown: 'Morning family walk: 3.45 km (4,302 steps). Man Shake + chia + coffee. Lunch: 3 chicken fajitas + Man Shake. Post-lunch walk: 4.08 km (4,929 steps). Dinner: BBQ chicken salad bowl (180g chicken) + Greek yoghurt berry bowl. 16,315 steps (Day 21).'
+      },
+      {
+        id: 4,
+        day: 'Wednesday (14/10)',
+        calories: 1949,
+        protein: 174.5,
+        steps: 17537,
+        breakdown: 'Morning walk with Wesley: 4.50 km (5,618 steps). Midday Hike: Equinox Park to Red Hill Lookout: 5.04 km (161m elevation, 6,201 steps). Lunch: Man Shake + toastie. Dinner: 200g scotch fillet steak salad bowl + air fryer chips + yoghurt dessert. 17,537 steps (Day 22).'
+      },
+      {
+        id: 5,
+        day: 'Thursday (15/10)',
+        calories: 1948,
+        protein: 181.7,
+        steps: 10008,
+        breakdown: 'Post-lunch walk: 4.45 km (5,543 steps). Man Shake + chia, coffees, toastie. Dinner: 2x chicken salad protein wraps. Evening Workout: 3-round Dumbbell Circuit (Goblet squats, RDLs, bent rows, curls, tris, 60 floor chest presses). 10,008 steps (Day 23).'
+      },
+      {
+        id: 6,
+        day: 'Friday (16/10)',
+        calories: 3644,
+        protein: 221.4,
+        steps: 13777,
+        breakdown: 'Passed & certified in Operations Bridge Manager (OBM)! Celebratory lunch at Grease Monkey (Salmon super bowl, chips, onion ring). Birthday dinner at KFC (Zinger Stacker, 7 Wicked Wings). Hosted ESPN NBA Fantasy draft. 13,777 steps & 221.4g protein!'
+      },
+      {
+        id: 7,
+        day: 'Saturday (17/10)',
+        calories: 2774,
+        protein: 149.1,
+        steps: 15843,
+        breakdown: 'Morning walk + chiro walk. Pizza lunch, 2 slices caramel mud cake with whipped cream. Dinner: High-protein beef lasagne with Greek yoghurt/egg/parmesan béchamel sub (~610 kcal, 57g P). 15,843 steps (Day 25).'
+      },
+      {
+        id: 8,
+        day: 'Sunday (18/10)',
+        calories: 2459,
+        protein: 130.8,
+        steps: 16645,
+        breakdown: 'Official Sunday weigh-in: 111.2 kg (fasted est: ~110.0 kg). Morning walk: 3.00 km (3,624 steps). Rearranging heavy lounge furniture. Lunch: 18-pc dumplings, gyoza & spring rolls w/ Greek yoghurt dips. Dinner: Zeus Street Greek (The Hermes wrap - no chips, salad, haloumi). 1 slice mud cake. 16,645 steps (Day 26).'
+      },
+      {
+        id: 9,
+        day: 'Monday (19/10)',
+        calories: 2364,
+        protein: 180.4,
+        steps: 16820,
+        breakdown: 'Two outdoor power walks! Morning: 4.51 km (5,783 steps). Midday: 6.59 km (7,783 steps) = 11.10 km workout walking. Watch displayed 22,603 due to morning duplicate; authentic count: 16,820 steps! Leftover lasagne lunch, 2 chicken wraps dinner, mud cake slice. 180.4g protein (Day 27).'
+      },
+      {
+        id: 10,
+        day: 'Tuesday (20/10)',
+        calories: 2469,
+        protein: 174.9,
+        steps: 14100,
+        breakdown: "Morning walk: 3.88 km in 49:06 (5,306 workout steps). Skipped 2nd walk due to stiffness; evening 10-pin bowling with family (took home the win!) pushing daily steps to 14,100! Lunch: Leftover lasagne. Dinner ('dindins'): Grilled scotch fillet steak + 2 baked potatoes + corn. 3 fries + 1/2 mouthful McFlurry at bowling. 174.9g protein (Day 28)!"
+      }
+    ];
+
+    // State management with LocalStorage
+    let journalData = JSON.parse(localStorage.getItem('david_kay_journal_data')) || defaultData;
+    let editingId = null;
+    let currentActiveEntryId = journalData[journalData.length - 1].id;
+    let stepsChartInstance = null;
+    let nutritionChartInstance = null;
+    let currentPromptField = null;
+
+    function saveToStorage() {
+      localStorage.setItem('david_kay_journal_data', JSON.stringify(journalData));
+      updateUI();
+    }
+
+    function resetDefaults() {
+      if (confirm('Reset journal back to default seed entries?')) {
+        journalData = JSON.parse(JSON.stringify(defaultData));
+        saveToStorage();
+      }
+    }
+
+    // Modal Control
+    function openModal(id = null) {
+      editingId = id;
+      const modal = document.getElementById('entryModal');
+      const title = document.getElementById('modalTitle');
+      
+      if (id) {
+        title.innerText = 'Edit Log Entry';
+        const item = journalData.find(x => x.id === id);
+        document.getElementById('inputDay').value = item.day;
+        document.getElementById('inputSteps').value = item.steps;
+        document.getElementById('inputRawSteps').value = item.steps;
+        document.getElementById('inputDistance').value = '';
+        document.getElementById('inputCalories').value = item.calories;
+        document.getElementById('inputProtein').value = item.protein;
+        document.getElementById('inputBreakdown').value = item.breakdown;
+        document.getElementById('inputWeight').value = item.breakdown.includes('kg') ? '111.2 kg' : '';
+      } else {
+        title.innerText = 'Log New Day';
+        const nextDayNum = journalData.length + 1;
+        document.getElementById('inputDay').value = `Day ${nextDayNum} (${new Date().toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'numeric' })})`;
+        document.getElementById('inputSteps').value = '';
+        document.getElementById('inputRawSteps').value = '';
+        document.getElementById('inputDistance').value = '';
+        document.getElementById('inputCalories').value = '';
+        document.getElementById('inputProtein').value = '';
+        document.getElementById('inputBreakdown').value = 'Breakfast: Man Shake + creatine + coffee... Lunch: ... Dinner: ... Workouts: ';
+        document.getElementById('inputWeight').value = '';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('entryModal').classList.add('hidden');
+      editingId = null;
+    }
+
+    function saveModalEntry() {
+      const day = document.getElementById('inputDay').value.trim() || 'New Entry';
+      const steps = parseInt(document.getElementById('inputSteps').value) || 0;
+      const calories = parseInt(document.getElementById('inputCalories').value) || 0;
+      const protein = parseFloat(document.getElementById('inputProtein').value) || 0;
+      const breakdown = document.getElementById('inputBreakdown').value.trim() || '';
+
+      if (editingId) {
+        const index = journalData.findIndex(x => x.id === editingId);
+        if (index !== -1) {
+          journalData[index] = { ...journalData[index], day, steps, calories, protein, breakdown };
+        }
+      } else {
+        const newId = journalData.length > 0 ? Math.max(...journalData.map(x => x.id)) + 1 : 1;
+        journalData.push({ id: newId, day, steps, calories, protein, breakdown });
+        currentActiveEntryId = newId;
+      }
+
+      closeModal();
+      saveToStorage();
+    }
+
+    function deleteEntry(id) {
+      if (confirm('Delete this journal entry?')) {
+        journalData = journalData.filter(x => x.id !== id);
+        if (currentActiveEntryId === id && journalData.length > 0) {
+          currentActiveEntryId = journalData[journalData.length - 1].id;
+        }
+        saveToStorage();
+      }
+    }
+
+    function loadDayForEditing(id) {
+      openModal(id);
+    }
+
+    // Quick Tap Field Prompt Handlers
+    function openQuickPrompt(field) {
+      currentPromptField = field;
+      const modal = document.getElementById('quickPromptModal');
+      const title = document.getElementById('promptTitle');
+      const label = document.getElementById('promptLabel');
+      const container = document.getElementById('promptInputContainer');
+      const activeItem = journalData.find(x => x.id === currentActiveEntryId) || journalData[journalData.length - 1];
+
+      let inputHtml = '';
+      if (field === 'date') {
+        title.innerText = 'Edit Date / Day';
+        label.innerText = 'Day Name & Date';
+        inputHtml = `<input type="text" id="quickInputValue" value="${activeItem.day}" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-sky-500">`;
+      } else if (field === 'steps') {
+        title.innerText = 'Edit Steps';
+        label.innerText = 'Authentic Step Count';
+        inputHtml = `<input type="number" id="quickInputValue" value="${activeItem.steps}" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-emerald-500">`;
+      } else if (field === 'calories') {
+        title.innerText = 'Edit Energy Intake';
+        label.innerText = 'Total Calories (kcal)';
+        inputHtml = `<input type="number" id="quickInputValue" value="${activeItem.calories}" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500">`;
+      } else if (field === 'protein') {
+        title.innerText = 'Edit Protein';
+        label.innerText = 'Total Protein (g)';
+        inputHtml = `<input type="number" step="0.1" id="quickInputValue" value="${activeItem.protein}" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-purple-500">`;
+      } else if (field === 'breakfast' || field === 'dinner') {
+        title.innerText = field === 'breakfast' ? 'Edit Breakfast / Shake' : 'Edit Dinner / Dindins';
+        label.innerText = 'Meal Breakdown Note';
+        inputHtml = `<textarea id="quickInputValue" rows="3" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-sky-500">${activeItem.breakdown}</textarea>`;
+      }
+
+      container.innerHTML = inputHtml;
+      modal.classList.remove('hidden');
+      document.getElementById('quickInputValue').focus();
+    }
+
+    function closeQuickPrompt() {
+      document.getElementById('quickPromptModal').classList.add('hidden');
+      currentPromptField = null;
+    }
+
+    function saveQuickPrompt() {
+      const activeItem = journalData.find(x => x.id === currentActiveEntryId) || journalData[journalData.length - 1];
+      const val = document.getElementById('quickInputValue').value;
+
+      if (currentPromptField === 'date') activeItem.day = val;
+      if (currentPromptField === 'steps') activeItem.steps = parseInt(val) || 0;
+      if (currentPromptField === 'calories') activeItem.calories = parseInt(val) || 0;
+      if (currentPromptField === 'protein') activeItem.protein = parseFloat(val) || 0;
+      if (currentPromptField === 'breakfast' || currentPromptField === 'dinner') activeItem.breakdown = val;
+
+      closeQuickPrompt();
+      saveToStorage();
+    }
+
+    // Excel Export via SheetJS
+    function exportToExcel() {
+      // Build summary sheet data
+      const summarySheetData = [
+        ["Health & Fitness Master Summary"],
+        [],
+        ["Personal Profile & Targets"],
+        ["Metric", "Target / Value", "Notes"],
+        ["Current Weight", "111.2 kg", "Sunday weigh-in (~110.0 kg fasted est.)"],
+        ["Weight Loss Goal", "Sustainable Fat Loss", "Targeting <100 kg milestone"],
+        ["Daily Calorie Target", "1,800 - 2,100 kcal", "Deficit window for consistent fat loss"],
+        ["Daily Protein Target", "140 - 160 g", "Muscle mass preservation floor"],
+        ["Daily Hydration", "Copious water", "Active flushing of sodium & metabolic waste"],
+        ["Morning Supplement", "5 g Creatine", "Taken daily with morning shake / coffee"],
+        ["Evening Recovery Stack", "Fish Oil (3x), Glucosamine (2x), D3 (1x)", "Joint, tissue, and recovery support"],
+        ["Weigh-In Cadence", "Sunday mornings", "Controlled weekly tracking"],
+        ["Current Active Streak", `${journalData.length + 18} Days`, "Consecutive days of structured activity"]
+      ];
+
+      // Build daily log sheet data
+      const logSheetData = [
+        ["Daily Log & Nutrition Tracker"],
+        [],
+        ["Day", "Calorie Intake (kcal)", "Protein (g)", "Steps", "Nutrition & Activity Breakdown"]
+      ];
+
+      journalData.forEach(item => {
+        logSheetData.push([item.day, item.calories, item.protein, item.steps, item.breakdown]);
+      });
+
+      // Calculate averages/sums
+      const totalSteps = journalData.reduce((acc, cur) => acc + cur.steps, 0);
+      const avgCals = Math.round(journalData.reduce((acc, cur) => acc + cur.calories, 0) / journalData.length);
+      const avgProt = (journalData.reduce((acc, cur) => acc + cur.protein, 0) / journalData.length).toFixed(1);
+      logSheetData.push(["Average / Total", avgCals, parseFloat(avgProt), totalSteps, `${journalData.length + 18}-Day Active Streak`]);
+
+      const wb = XLSX.utils.book_new();
+      const wsSummary = XLSX.utils.aoa_to_sheet(summarySheetData);
+      const wsLog = XLSX.utils.aoa_to_sheet(logSheetData);
+
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Summary & Goals");
+      XLSX.utils.book_append_sheet(wb, wsLog, "Daily Log");
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `David_Kay_Health_Journal_${todayStr}.xlsx`);
+    }
+
+    // UI & Charts Rendering
+    function updateUI() {
+      // 1. Table Render
+      const tbody = document.getElementById('logTableBody');
+      tbody.innerHTML = '';
+
+      journalData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-800/40 transition border-b border-slate-800/60 ${item.id === currentActiveEntryId ? 'bg-sky-950/20' : ''}`;
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-bold text-sky-400 whitespace-nowrap text-center">${item.day}</td>
+          <td class="py-3 px-4 text-right font-semibold text-amber-300 whitespace-nowrap">${item.calories.toLocaleString()}</td>
+          <td class="py-3 px-4 text-right font-bold ${item.protein >= 140 ? 'text-purple-400' : 'text-slate-400'} whitespace-nowrap">${item.protein.toFixed(1)}g</td>
+          <td class="py-3 px-4 text-right font-bold ${item.steps >= 10000 ? 'text-emerald-400' : 'text-slate-300'} whitespace-nowrap">${item.steps.toLocaleString()}</td>
+          <td class="py-3 px-5 text-slate-300 leading-relaxed min-w-[280px]">${item.breakdown}</td>
+          <td class="py-3 px-4 text-center whitespace-nowrap">
+            <div class="flex items-center justify-center space-x-2">
+              <button onclick="openModal(${item.id})" class="p-1.5 rounded-lg text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition" title="Edit">
+                <i data-lucide="edit-2" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteEntry(${item.id})" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition" title="Delete">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 2. Update Quick Tap Cards with the most recent item
+      const latest = journalData[journalData.length - 1];
+      if (latest) {
+        document.getElementById('quick-date').innerText = latest.day;
+        document.getElementById('quick-steps').innerText = latest.steps.toLocaleString();
+        document.getElementById('quick-calories').innerText = latest.calories.toLocaleString();
+        document.getElementById('quick-protein').innerText = latest.protein.toFixed(1) + 'g';
+        document.getElementById('quick-breakfast').innerText = latest.breakdown.includes('ManShake') ? 'ManShake+Chia' : 'Breakfast';
+        document.getElementById('quick-dinner').innerText = latest.breakdown.includes('scotch fillet') ? 'Scotch Fillet' : (latest.breakdown.includes('wrap') ? 'Chicken Wraps' : 'Dinner');
+      }
+
+      // 3. Update KPIs
+      document.getElementById('kpi-streak').innerText = (28).toString();
+      const last7 = journalData.slice(-7);
+      const avgSteps = Math.round(last7.reduce((a, b) => a + b.steps, 0) / last7.length);
+      const avgProt = (last7.reduce((a, b) => a + b.protein, 0) / last7.length).toFixed(1);
+      document.getElementById('kpi-steps').innerText = avgSteps.toLocaleString();
+      document.getElementById('kpi-protein').innerText = avgProt;
+
+      // 4. Update Charts
+      renderCharts();
+      lucide.createIcons();
+    }
+
+    function renderCharts() {
+      const labels = journalData.map(x => x.day.split(' ')[0]);
+      const stepsData = journalData.map(x => x.steps);
+      const caloriesData = journalData.map(x => x.calories);
+      const proteinData = journalData.map(x => x.protein);
+
+      // Chart 1: Steps
+      const ctxSteps = document.getElementById('stepsChart').getContext('2d');
+      if (stepsChartInstance) stepsChartInstance.destroy();
+
+      stepsChartInstance = new Chart(ctxSteps, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Authentic Daily Steps',
+              data: stepsData,
+              backgroundColor: stepsData.map(s => s >= 10000 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(100, 116, 139, 0.6)'),
+              borderRadius: 8,
+              borderSkipped: false
+            },
+            {
+              label: '10k Step Goal Floor',
+              data: Array(labels.length).fill(10000),
+              type: 'line',
+              borderColor: 'rgba(56, 189, 248, 0.8)',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { size: 11 } }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: '#1e293b' },
+              ticks: { color: '#94a3b8' }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8' }
+            }
+          }
+        }
+      });
+
+      // Chart 2: Calories & Protein Dual Axis
+      const ctxNutrition = document.getElementById('nutritionChart').getContext('2d');
+      if (nutritionChartInstance) nutritionChartInstance.destroy();
+
+      nutritionChartInstance = new Chart(ctxNutrition, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Energy (kcal)',
+              data: caloriesData,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              yAxisID: 'yCal',
+              fill: true,
+              tension: 0.35,
+              borderWidth: 2.5
+            },
+            {
+              label: 'Protein (g)',
+              data: proteinData,
+              borderColor: '#c084fc',
+              backgroundColor: 'rgba(192, 132, 252, 0.15)',
+              yAxisID: 'yProt',
+              fill: false,
+              tension: 0.35,
+              borderWidth: 2.5,
+              pointBackgroundColor: '#c084fc',
+              pointRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { size: 11 } }
+            }
+          },
+          scales: {
+            yCal: {
+              type: 'linear',
+              position: 'left',
+              grid: { color: '#1e293b' },
+              ticks: { color: '#f59e0b' },
+              min: 1500,
+              suggestedMax: 3800
+            },
+            yProt: {
+              type: 'linear',
+              position: 'right',
+              grid: { display: false },
+              ticks: { color: '#c084fc' },
+              min: 100,
+              suggestedMax: 240
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8' }
+            }
+          }
+        }
+      });
+    }
+
+    // Initial Load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
+    });
+  </script>
+</body>
+</html>
